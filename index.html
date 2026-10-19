@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IronPerimeter — Military Base Defense & AI Perimeter Security Twin</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Tajawal:wght@500;700;800&display=swap');
+
+        body {
+            font-family: 'JetBrains Mono', 'Tajawal', monospace;
+            background-color: #030712;
+            color: #f1f5f9;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .font-chakra { font-family: 'Chakra Petch', sans-serif; }
+
+        .glass-base {
+            background: rgba(10, 18, 32, 0.88);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
+        }
+
+        /* Thermal Camera Shader Simulation */
+        .thermal-feed {
+            filter: contrast(180%) brightness(110%) invert(100%) hue-rotate(180deg) saturate(250%);
+        }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: rgba(3, 7, 18, 0.8); }
+        ::-webkit-scrollbar-thumb { background: #d97706; border-radius: 2px; }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
+
+    <!-- Top Base Defense Header -->
+    <header class="h-13 border-b border-amber-900/60 bg-slate-950/95 flex items-center justify-between px-3 md:px-5 z-30 shrink-0">
+        <div class="flex items-center space-x-3 rtl:space-x-reverse">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-slate-950 shadow-lg shadow-amber-500/30">
+                <i class="fa-solid fa-shield-halved text-lg text-slate-950"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                    <span class="font-chakra font-bold text-base md:text-lg tracking-wider text-amber-400">IRON<span class="text-white">PERIMETER</span> <span class="text-xs text-rose-400 font-mono">[BASE DEFENSE AI]</span></span>
+                    <span class="hidden md:inline-block px-2 py-0.5 text-[9px] font-bold bg-amber-950 text-amber-300 border border-amber-700/60 rounded">FMCW RADAR // DAS SENSOR</span>
+                </div>
+                <p class="text-[9px] text-slate-400 -mt-1 hidden sm:block" id="subHeaderDesc">Critical Infrastructure Physical Security, Slew-to-Cue PTZ & Edge AI Multi-Sensor Fusion</p>
+            </div>
+        </div>
+
+        <!-- Telemetry Highlights -->
+        <div class="hidden lg:flex items-center space-x-5 rtl:space-x-reverse text-xs font-mono">
+            <div>
+                <span class="text-slate-500 text-[10px]">SECURITY LEVEL:</span>
+                <span id="telLockdown" class="font-bold text-emerald-400">NORMAL PATROL</span>
+            </div>
+            <div>
+                <span class="text-slate-500 text-[10px]">FENCE ZONES:</span>
+                <span class="font-bold text-amber-400">8 SECTORS SECURED</span>
+            </div>
+            <div>
+                <span class="text-slate-500 text-[10px]">FIBER DAS:</span>
+                <span class="font-bold text-cyan-400">ACOUSTIC SENSING ACTIVE</span>
+            </div>
+            <div>
+                <span class="text-slate-500 text-[10px]">RADAR TRACK:</span>
+                <span id="telIntruder" class="font-bold text-emerald-400">PERIMETER CLEAR</span>
+            </div>
+        </div>
+
+        <!-- Right Quick Controls -->
+        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+            <!-- Intrusion Simulation Button -->
+            <button id="simulateBreachBtn" class="px-2.5 py-1 text-xs font-bold rounded bg-rose-950 border border-rose-600/60 hover:bg-rose-900 text-rose-300 transition flex items-center space-x-1" title="Inject Simulated Fence Breach Event">
+                <i class="fa-solid fa-person-falling-burst"></i>
+                <span id="txtBreachBtn">INJECT BREACH</span>
+            </button>
+            <!-- Audio Toggle -->
+            <button id="soundBtn" class="p-1.5 rounded bg-slate-900 border border-slate-700 hover:border-amber-500 text-slate-400 hover:text-amber-400 transition" title="Security Siren & Alert Audio">
+                <i class="fa-solid fa-volume-high" id="soundIcon"></i>
+            </button>
+            <!-- Reset View -->
+            <button id="resetCamBtn" class="p-1.5 rounded bg-slate-900 border border-slate-700 hover:border-amber-500 text-slate-400 hover:text-amber-400 transition" title="Reset Camera Orbit">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+            <!-- Language Toggle -->
+            <button id="langToggleBtn" class="px-2.5 py-1 text-xs font-bold rounded bg-amber-950 border border-amber-600/60 text-amber-300 hover:bg-amber-900 transition">
+                عربي
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 relative overflow-hidden flex flex-col lg:flex-row">
+
+        <!-- 3D Military Base & Perimeter Viewport -->
+        <div class="flex-1 relative h-full w-full bg-slate-950">
+            <div id="threeContainer" class="w-full h-full relative cursor-grab active:cursor-grabbing"></div>
+
+            <!-- Slew-to-Cue PTZ Live Camera Feed Inset -->
+            <div class="absolute top-4 right-4 z-20 glass-base p-2.5 rounded-xl border border-amber-500/40 w-64 shadow-2xl">
+                <div class="flex justify-between items-center text-xs font-bold text-amber-400 mb-1.5">
+                    <span><i class="fa-solid fa-video mr-1"></i> PTZ THERMAL SLEW-TO-CUE</span>
+                    <span id="camStatus" class="text-[9px] bg-emerald-950 text-emerald-300 px-1 rounded border border-emerald-700/60">SECTOR 4-B LOCK</span>
+                </div>
+                <div class="relative w-full h-36 bg-black rounded border border-slate-800 overflow-hidden thermal-feed">
+                    <canvas id="ptzCanvas" width="256" height="144" class="w-full h-full"></canvas>
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="w-12 h-12 border border-emerald-400 rounded-sm"></div>
+                    </div>
+                </div>
+                <div class="text-[10px] text-slate-400 font-mono mt-1 flex justify-between">
+                    <span>PAN: <span id="ptzPanText" class="text-amber-300 font-bold">142°</span></span>
+                    <span>TILT: <span id="ptzTiltText" class="text-amber-300 font-bold">-18°</span></span>
+                    <span>ZOOM: <span class="text-cyan-400 font-bold">24x OPT</span></span>
+                </div>
+            </div>
+
+            <!-- Sector Status Floating Bar -->
+            <div class="absolute bottom-6 left-4 z-20 flex space-x-1.5 rtl:space-x-reverse bg-slate-950/85 p-1.5 rounded-xl border border-amber-800/60 backdrop-blur-md">
+                <button class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 text-slate-300">Sec 1-A [OK]</button>
+                <button class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 text-slate-300">Sec 2-A [OK]</button>
+                <button class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 text-slate-300">Sec 3-B [OK]</button>
+                <button id="sector4Btn" class="px-2.5 py-1 text-xs font-semibold rounded bg-emerald-600 text-white shadow-md">Sec 4-B [WATCH]</button>
+                <button class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 text-slate-300">Main Gate ECP [SECURE]</button>
+            </div>
+        </div>
+
+        <!-- Right Base Defense Operations Panel -->
+        <div class="w-full lg:w-96 bg-slate-950/95 border-t lg:border-t-0 lg:border-l border-amber-900/60 flex flex-col h-auto lg:h-full overflow-y-auto p-3.5 space-y-3.5 shrink-0 z-20">
+
+            <!-- Fiber-Optic Distributed Acoustic Sensing (DAS) Waveform -->
+            <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-amber-400 flex items-center">
+                        <i class="fa-solid fa-wave-square mr-1.5 text-amber-400"></i>
+                        <span id="dasTitle">DISTRIBUTED ACOUSTIC SENSING (DAS)</span>
+                    </span>
+                    <span class="text-[9px] font-mono text-cyan-400 bg-cyan-950/80 px-1.5 py-0.5 rounded">FIBER OTDR</span>
+                </div>
+                <canvas id="dasCanvas" width="350" height="90" class="w-full bg-black/90 rounded border border-slate-800"></canvas>
+                <div class="flex justify-between items-center text-[10px] text-slate-400 mt-1.5 font-mono">
+                    <span>FENCE VIBRATION: <span id="dasVibText" class="text-emerald-400 font-bold">NORMAL AMBIENT</span></span>
+                    <span>SAMPLING: <span class="text-slate-400">10 kHz</span></span>
+                </div>
+            </div>
+
+            <!-- Edge AI Threat Classification Engine -->
+            <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-amber-400 flex items-center">
+                        <i class="fa-solid fa-microchip mr-1.5 text-amber-400"></i>
+                        <span id="aiClassTitle">EDGE AI THREAT CLASSIFIER</span>
+                    </span>
+                    <span class="text-[9px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-700/50 font-bold">YOLO-DEFENSE v9</span>
+                </div>
+
+                <div class="space-y-1.5 text-[11px] font-mono text-slate-300">
+                    <div class="flex justify-between">
+                        <span>Detected Classification:</span>
+                        <span id="aiTargetClass" class="text-emerald-400 font-bold">NO THREAT DETECTED</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Model Confidence:</span>
+                        <span id="aiConfidence" class="text-cyan-400 font-bold">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>False Alarm Filter (FAR):</span>
+                        <span class="text-slate-300 font-bold">Wind/Animals Rejection 98.2%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Action Protocol:</span>
+                        <span id="aiAction" class="text-amber-400 font-bold">ROUTINE PERIMETER PATROL</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Operations Log & Siren Lock -->
+            <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 flex-1 flex flex-col min-h-[160px]">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-amber-400 flex items-center">
+                        <i class="fa-solid fa-shield-cat mr-1.5 text-amber-400"></i>
+                        <span id="secLogTitle">BASE DEFENSE EVENT LOG</span>
+                    </span>
+                    <button id="clearLogsBtn" class="text-[10px] text-slate-500 hover:text-slate-300">CLEAR</button>
+                </div>
+                <div id="baseLogList" class="flex-1 overflow-y-auto space-y-1.5 text-[11px] font-mono pr-1 text-slate-300">
+                    <div class="p-1 rounded bg-black/40 border-l-2 border-emerald-500"><span class="text-slate-500">15:00:01</span> [PERIMETER] All 8 fence sectors calibrated. DAS baseline steady.</div>
+                    <div class="p-1 rounded bg-black/40 border-l-2 border-amber-500"><span class="text-slate-500">15:01:20</span> [ECP] Vehicle inspection scan complete at Gate 1. Cleared.</div>
+                    <div class="p-1 rounded bg-black/40 border-l-2 border-cyan-500"><span class="text-slate-500">15:02:44</span> [FMCW] Ground surveillance radar sweep 360° active.</div>
+                </div>
+            </div>
+
+            <!-- Standards Stamp -->
+            <div class="pt-2 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between items-center">
+                <span>Eng. Tareq Aboushi</span>
+                <span class="text-amber-500 font-mono">Base Defense Systems</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 3D Base Scene & Sensor Simulation -->
+    <script>
+        const I18N = {
+            en: {
+                subDesc: "Critical Infrastructure Physical Security, Slew-to-Cue PTZ & Edge AI Multi-Sensor Fusion",
+                dasTitle: "DISTRIBUTED ACOUSTIC SENSING (DAS)",
+                aiClassTitle: "EDGE AI THREAT CLASSIFIER",
+                secLogTitle: "BASE DEFENSE EVENT LOG",
+                breachBtn: "INJECT BREACH",
+                resetBreachBtn: "CLEAR INTRUSION (RESET)"
+            },
+            ar: {
+                subDesc: "حماية المنشآت العسكرية الحيوية، التوجيه التلقائي للكاميرات والذكاء الاصطناعي لدمج الحساسات",
+                dasTitle: "الاستشعار الصوتي الموزع بالألياف الضوئية (DAS)",
+                aiClassTitle: "مصنف التهديدات الأمنية بالذكاء الاصطناعي",
+                secLogTitle: "سجل الأحداث الأمنية والإنذار",
+                breachBtn: "محاكاة محاولة اختراق",
+                resetBreachBtn: "إنهاء الإنذار وإعادة التأمين"
+            }
+        };
+
+        let currentLang = 'en';
+
+        // Sound Synthesis (Web Audio API)
+        let audioCtx = null;
+        let isAudioMuted = true;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playSiren() {
+            if (isAudioMuted || !audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.linearRampToValueAtTime(1100, now + 0.3);
+            osc.frequency.linearRampToValueAtTime(600, now + 0.6);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.8);
+        }
+
+        // Three.js 3D Military Base Scene
+        let scene, camera, renderer, controls;
+        let guardTowers = [];
+        let ptzCameraMesh;
+        let intruderMesh;
+        let isBreached = false;
+
+        function initThree() {
+            const container = document.getElementById('threeContainer');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020617);
+            scene.fog = new THREE.FogExp2(0x020617, 0.012);
+
+            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 2000);
+            camera.position.set(0, 30, 45);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lights
+            scene.add(new THREE.AmbientLight(0x38bdf8, 0.4));
+            const sun = new THREE.DirectionalLight(0xfef08a, 1.2);
+            sun.position.set(30, 60, 40);
+            scene.add(sun);
+
+            // Ground Tactical Terrain
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 }));
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+
+            const grid = new THREE.GridHelper(300, 30, 0xf59e0b, 0x1e293b);
+            scene.add(grid);
+
+            // Perimeter Double Fence Line (Yellow glowing wireframe)
+            const fenceGeo = new THREE.CylinderGeometry(25, 25, 3.5, 32, 1, true);
+            const fenceMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: true, transparent: true, opacity: 0.35 });
+            const fence = new THREE.Mesh(fenceGeo, fenceMat);
+            fence.position.y = 1.75;
+            scene.add(fence);
+
+            // 4 Corner Guard Towers
+            const towerMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 });
+            const towerCoords = [
+                { x: 20, z: 20 }, { x: -20, z: 20 },
+                { x: 20, z: -20 }, { x: -20, z: -20 }
+            ];
+
+            towerCoords.forEach(c => {
+                const tower = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.5, 12, 8), towerMat);
+                tower.position.set(c.x, 6, c.z);
+                scene.add(tower);
+            });
+
+            // Center Command Headquarters Bunker
+            const bunker = new THREE.Mesh(new THREE.BoxGeometry(16, 5, 12), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7 }));
+            bunker.position.set(0, 2.5, 0);
+            scene.add(bunker);
+
+            // PTZ Camera Turret on Central Mast
+            const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 10), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+            mast.position.set(0, 10, 0);
+            scene.add(mast);
+
+            ptzCameraMesh = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+            ptzCameraMesh.position.set(0, 15, 0);
+            scene.add(ptzCameraMesh);
+
+            // Intruder 3D Marker (Red Glowing Cylinder)
+            intruderMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 2), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            intruderMesh.position.set(18, 1, -17);
+            intruderMesh.visible = false;
+            scene.add(intruderMesh);
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('threeContainer');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // DAS Waveform Canvas
+        const dasCanvas = document.getElementById('dasCanvas');
+        const dCtx = dasCanvas.getContext('2d');
+        let dasOffset = 0;
+
+        function drawDas() {
+            dCtx.fillStyle = '#020617';
+            dCtx.fillRect(0, 0, dasCanvas.width, dasCanvas.height);
+
+            dCtx.strokeStyle = isBreached ? '#ef4444' : '#10b981';
+            dCtx.lineWidth = 1.5;
+            dCtx.beginPath();
+
+            dasOffset += 0.08;
+            const points = 70;
+            const step = dasCanvas.width / points;
+
+            for (let i = 0; i < points; i++) {
+                let y = dasCanvas.height / 2;
+                if (isBreached && i > 30 && i < 45) {
+                    // Huge vibration spike at Sector 4-B
+                    y += (Math.random() - 0.5) * 60;
+                } else {
+                    y += Math.sin(i * 0.3 + dasOffset) * 4 + (Math.random() - 0.5) * 2;
+                }
+                if (i === 0) dCtx.moveTo(0, y);
+                else dCtx.lineTo(i * step, y);
+            }
+            dCtx.stroke();
+        }
+
+        // PTZ Thermal Canvas
+        const ptzCanvas = document.getElementById('ptzCanvas');
+        const pCtx = ptzCanvas.getContext('2d');
+
+        function drawPtz() {
+            pCtx.fillStyle = '#0a0a0a';
+            pCtx.fillRect(0, 0, ptzCanvas.width, ptzCanvas.height);
+
+            // Draw thermal gradient background
+            const grad = pCtx.createLinearGradient(0, 0, 0, ptzCanvas.height);
+            grad.addColorStop(0, '#1e3a8a');
+            grad.addColorStop(1, '#064e3b');
+            pCtx.fillStyle = grad;
+            pCtx.fillRect(0, 0, ptzCanvas.width, ptzCanvas.height);
+
+            if (isBreached) {
+                // Draw hot thermal silhouette
+                pCtx.fillStyle = '#fef08a';
+                pCtx.beginPath();
+                pCtx.arc(ptzCanvas.width / 2, ptzCanvas.height / 2 - 10, 8, 0, Math.PI * 2);
+                pCtx.fill();
+                pCtx.fillRect(ptzCanvas.width / 2 - 6, ptzCanvas.height / 2 - 2, 12, 25);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Slew camera to intruder if breached
+            if (isBreached && ptzCameraMesh) {
+                ptzCameraMesh.lookAt(intruderMesh.position);
+            }
+
+            drawDas();
+            drawPtz();
+            renderer.render(scene, camera);
+        }
+
+        // Log Helper
+        function addLog(msg, type = 'info') {
+            const list = document.getElementById('baseLogList');
+            const now = new Date().toTimeString().split(' ')[0];
+            const div = document.createElement('div');
+            const borderCol = type === 'alert' ? 'border-rose-500' : (type === 'warn' ? 'border-amber-500' : 'border-cyan-500');
+            div.className = `p-1 rounded bg-black/40 border-l-2 ${borderCol}`;
+            div.innerHTML = `<span class="text-slate-500">${now}</span> ${msg}`;
+            list.prepend(div);
+            if (list.children.length > 25) list.removeChild(list.lastChild);
+        }
+
+        // Breach Simulation
+        document.getElementById('simulateBreachBtn').addEventListener('click', () => {
+            initAudio();
+            isBreached = !isBreached;
+            const btn = document.getElementById('simulateBreachBtn');
+            const txt = document.getElementById('txtBreachBtn');
+            const telLock = document.getElementById('telLockdown');
+            const telIntruder = document.getElementById('telIntruder');
+            const sec4Btn = document.getElementById('sector4Btn');
+
+            if (isBreached) {
+                intruderMesh.visible = true;
+                btn.className = "px-2.5 py-1 text-xs font-bold rounded bg-rose-600 text-white animate-pulse transition flex items-center space-x-1";
+                txt.innerText = I18N[currentLang].resetBreachBtn;
+                telLock.innerText = "LOCKDOWN ALERT";
+                telLock.className = "font-bold text-rose-500";
+                telIntruder.innerText = "INTRUDER AT SEC 4-B";
+                telIntruder.className = "font-bold text-rose-500";
+                sec4Btn.className = "px-2.5 py-1 text-xs font-semibold rounded bg-rose-600 text-white shadow-md animate-pulse";
+                document.getElementById('dasVibText').innerText = "BREACH DETECTED (SPIKE > 85 dB)";
+                document.getElementById('dasVibText').className = "text-rose-500 font-bold";
+                document.getElementById('aiTargetClass').innerText = "[HUMAN]: INTRUDER CLIMBING FENCE";
+                document.getElementById('aiTargetClass').className = "text-rose-400 font-bold";
+                document.getElementById('aiConfidence').innerText = "97.8% (HIGH RISK)";
+                document.getElementById('aiAction').innerText = "DISPATCH RAPID REACTION FORCE (QRF)";
+                playSiren();
+                addLog("[ALARM] DAS Fiber Spike at Sector 4-B! Slew-to-Cue PTZ thermal camera tracking intruder.", "alert");
+            } else {
+                intruderMesh.visible = false;
+                btn.className = "px-2.5 py-1 text-xs font-bold rounded bg-rose-950 border border-rose-600/60 hover:bg-rose-900 text-rose-300 transition flex items-center space-x-1";
+                txt.innerText = I18N[currentLang].breachBtn;
+                telLock.innerText = "NORMAL PATROL";
+                telLock.className = "font-bold text-emerald-400";
+                telIntruder.innerText = "PERIMETER CLEAR";
+                telIntruder.className = "font-bold text-emerald-400";
+                sec4Btn.className = "px-2.5 py-1 text-xs font-semibold rounded bg-emerald-600 text-white shadow-md";
+                document.getElementById('dasVibText').innerText = "NORMAL AMBIENT";
+                document.getElementById('dasVibText').className = "text-emerald-400 font-bold";
+                document.getElementById('aiTargetClass').innerText = "NO THREAT DETECTED";
+                document.getElementById('aiTargetClass').className = "text-emerald-400 font-bold";
+                document.getElementById('aiConfidence').innerText = "--";
+                document.getElementById('aiAction').innerText = "ROUTINE PERIMETER PATROL";
+                addLog("[SECURITY] Perimeter breach resolved. Security normalized.", "info");
+            }
+        });
+
+        // Reset Cam
+        document.getElementById('resetCamBtn').addEventListener('click', () => {
+            camera.position.set(0, 30, 45);
+            controls.target.set(0, 0, 0);
+        });
+
+        // Sound Toggle
+        document.getElementById('soundBtn').addEventListener('click', () => {
+            initAudio();
+            isAudioMuted = !isAudioMuted;
+            document.getElementById('soundIcon').className = isAudioMuted ? "fa-solid fa-volume-xmark" : "fa-solid fa-volume-high text-amber-400";
+        });
+
+        // Clear Logs
+        document.getElementById('clearLogsBtn').addEventListener('click', () => {
+            document.getElementById('baseLogList').innerHTML = '';
+        });
+
+        // Language toggle
+        document.getElementById('langToggleBtn').addEventListener('click', () => {
+            currentLang = currentLang === 'en' ? 'ar' : 'en';
+            document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+            document.getElementById('langToggleBtn').innerText = currentLang === 'ar' ? 'English' : 'عربي';
+
+            const t = I18N[currentLang];
+            document.getElementById('subHeaderDesc').innerText = t.subDesc;
+            document.getElementById('dasTitle').innerText = t.dasTitle;
+            document.getElementById('aiClassTitle').innerText = t.aiClassTitle;
+            document.getElementById('secLogTitle').innerText = t.secLogTitle;
+            document.getElementById('txtBreachBtn').innerText = isBreached ? t.resetBreachBtn : t.breachBtn;
+        });
+
+        // Init
+        initThree();
+    </script>
+</body>
+</html>
