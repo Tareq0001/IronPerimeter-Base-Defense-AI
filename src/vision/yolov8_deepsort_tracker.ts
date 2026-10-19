@@ -417,6 +417,7 @@ export class DeepSortTracker {
       const det = detections[dIdx];
       const feat = features ? features[dIdx] : undefined;
       const newTracker = new KalmanBoxTracker(det, feat);
+      newTracker.hits = 1;
       this.trackers.push(newTracker);
     }
 
