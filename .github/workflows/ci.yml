@@ -1,0 +1,58 @@
+name: IronPerimeter C-UAS & Base Defense CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typescript-and-unit-tests:
+    name: TypeScript C-UAS Engine & Vitest Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Typecheck C-UAS Modules
+        run: npm run typecheck
+
+      - name: Run C-UAS Mathematical Verification Suite
+        run: npm test
+
+  cpp-tensorrt-compile:
+    name: C++17 Real-Time C-UAS Tracker & PN Solver Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Compile C++17 Detector, Kalman & PN Guidance Engine
+        run: |
+          g++ -std=c++17 -O3 -Wall -Wextra -c cpp_inference/tensorrt_cuas_detector.cpp -o tensorrt_cuas_detector.o
+
+  python-microdoppler-classifier:
+    name: Python Micro-Doppler Threat Classifier Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Scientific Dependencies
+        run: pip install -r python_ai/requirements.txt
+
+      - name: Execute Micro-Doppler Spectrogram Self-Test
+        run: python python_ai/cuas_threat_classifier.py --self-test

@@ -1,0 +1,38 @@
+{
+  "name": "ironperimeter-base-defense-ai",
+  "version": "2.4.0",
+  "private": true,
+  "description": "Counter-UAS (C-UAS) & Autonomous Military Base Perimeter Defense Digital Twin — Multi-Sensor Fusion (FMCW Radar, Fiber-Optic DAS, Acoustic DoA Array, EO/IR YOLOv8+DeepSORT) & Proportional Navigation / Directed Energy Effectors",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "c-uas",
+    "counter-drone",
+    "perimeter-defense",
+    "yolov8",
+    "deepsort",
+    "kalman-filter",
+    "music-doa",
+    "gcc-phat",
+    "proportional-navigation",
+    "directed-energy",
+    "sensor-fusion"
+  ],
+  "author": "Eng. Tareq Aboushi (Tareq0001)",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.128.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.128.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vitest": "^1.6.0"
+  }
+}

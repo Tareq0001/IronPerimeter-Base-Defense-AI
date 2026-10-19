@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# C++ & TensorRT build artifacts
+cpp_inference/build/
+*.o
+*.obj
+*.exe
+*.so
+*.dll
+*.trt
+*.engine
+
+# Python environments & caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
